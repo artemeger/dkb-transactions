@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build outputs
+dist-electron/
+client/dist/
+server/dist/
+server-bundled/
+
+# Data files (user data, not tracked)
+data/
+*.json
+!package.json
+!client/package.json
+!server/package.json
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Builder
+builder-debug.yml
+builder-effective-config.yaml
+
+# Temporary
+temp/
+tmp/

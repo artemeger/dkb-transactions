@@ -1,0 +1,100 @@
+{
+  "name": "dkb-transaction-manager",
+  "version": "1.0.0",
+  "description": "Financial transaction manager for DKB bank statements",
+  "main": "electron/main.js",
+  "private": true,
+  "author": {
+    "name": "DKB Manager"
+  },
+  "homepage": "https://github.com/yourusername/dkb-transaction-manager",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    
+    "electron:dev": "concurrently -k \"npm run electron:start-server\" \"vite --config client/vite.config.ts\" \"wait-on http://localhost:5173 && cross-env ELECTRON_DEV=1 NODE_ENV=development npx electron .\"",
+    "electron:start-server": "npx tsx watch server/src/index.ts",
+    "electron:start-client": "vite --config client/vite.config.ts",
+    
+    "build": "npm run build:server && npm run build:client && npm run bundle:server",
+    "build:server": "cd server && npx tsc",
+    "build:client": "cd client && npx vite build",
+    "bundle:server": "node scripts/bundle-server.js",
+    
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "devDependencies": {
+    "@types/electron": "^1.6.10",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^8.0.1"
+  },
+  
+  "build": {
+    "appId": "com.dkb-manager.app",
+    "productName": "DKB Transaction Manager",
+    "directories": {
+      "output": "dist-electron"
+    },
+
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+
+    "extraResources": [
+      {
+        "from": "client/dist",
+        "to": "client/dist"
+      },
+      {
+        "from": "server/dist",
+        "to": "server/dist"
+      },
+      {
+        "from": "server-bundled",
+        "to": "server"
+      }
+    ],
+
+    "win": {
+      "target": [
+        {"target": "portable", "arch": ["x64"]},
+        {"target": "nsis", "arch": ["x64"]}
+      ]
+    },
+
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": [
+        {"target": "dmg", "arch": ["arm64", "x64"]},
+        {"target": "zip", "arch": ["arm64", "x64"]}
+      ]
+    },
+
+    "linux": {
+      "category": "Office",
+      "target": [
+        {"target": "AppImage", "arch": ["x64"]},
+        {"target": "deb", "arch": ["x64"]}
+      ],
+      "maintainer": "DKB Manager <support@example.com>"
+    }
+  },
+  
+  "electron-builder": {
+    "npmRebuild": true,
+    "asar": true,
+    "asarUnpack": []
+  }
+}

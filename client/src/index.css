@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============================================
+   THEME COLOR VARIABLES (MUST COME BEFORE @LAYER)
+   These define the semantic color tokens for both themes
+   ============================================ */
+
+/* Dark theme (default) — these match our Tailwind config hex values */
+:root {
+  --tw-color-background: #0f172a;
+  --tw-color-surface: #1e293b;
+  --tw-color-surface-hover: #334155;
+  --tw-color-border: #334155;
+  --tw-color-primary: #3b82f6;
+  --tw-color-primary-hover: #2563eb;
+  --tw-color-primary-light: #93c5fd;
+  --tw-color-success: #10b981;
+  --tw-color-danger: #ef4444;
+  --tw-color-warning: #f59e0b;
+  --tw-color-text-primary: #f1f5f9;
+  --tw-color-text-secondary: #94a3b8;
+  --tw-color-text-muted: #64748b;
+  --tw-color-chart-axis: #9ca3af;
+  --tw-color-chart-axis-light: #6b7280;
+  --tw-color-inner-highlight: rgba(255, 255, 255, 0.05);
+}
+
+/* Light theme overrides */
+.theme-light {
+  --tw-color-background: #f8fafc;
+  --tw-color-surface: #ffffff;
+  --tw-color-surface-hover: #f1f5f9;
+  --tw-color-border: #cbd5e1;
+  --tw-color-primary: #2563eb;
+  --tw-color-primary-hover: #1d4ed8;
+  --tw-color-primary-light: #93c5fd;
+  --tw-color-success: #059669;
+  --tw-color-danger: #dc2626;
+  --tw-color-warning: #d97706;
+  --tw-color-text-primary: #0f172a;
+  --tw-color-text-secondary: #475569;
+  --tw-color-text-muted: #94a3b8;
+  --tw-color-chart-axis: #4b5563;
+  --tw-color-chart-axis-light: #9ca3af;
+  --tw-color-inner-highlight: rgba(0, 0, 0, 0.03);
+}
+
+/* ============================================
+   SEMANTIC UTILITY OVERRIDES (AFTER TAILWIND)
+   These override Tailwind's compiled values using CSS vars
+   Must be in @layer utilities for proper cascade ordering
+   ============================================ */
+
+@layer utilities {
+  /* Background color overrides - semantic layer wins over generated Tailwind */
+  .bg-background,
+  [class*="bg-background"] {
+    background-color: var(--tw-color-background) !important;
+  }
+  
+  .bg-surface,
+  [class*="bg-surface"],
+  .dark\\:bg-surface,
+  .hover\\:bg-surface:hover {
+    background-color: var(--tw-color-surface) !important;
+  }
+  
+  /* Surface hover override */
+  .hover\\:bg-surface-hover:hover {
+    background-color: var(--tw-color-surface-hover) !important;
+  }
+}
+
+/* ============================================
+   THEME-SPECIFIC OVERRIDES (After @layer utilities)
+   These provide additional adjustments per theme
+   ============================================ */
+
+/* Body defaults per theme */
+body.theme-light {
+  background-color: var(--tw-color-background) !important;
+  color: #1e293b !important;
+}
+
+body.theme-dark {
+  background-color: var(--tw-color-background) !important;
+  color: white !important;
+}
+
+/* Surface surfaces explicitly for both themes */
+body.theme-light .bg-surface,
+body.theme-light [class*="bg-surface"] {
+  background-color: #ffffff !important;
+}
+
+/* Text color adjustments per theme */
+body.theme-dark .text-white { color: var(--tw-color-text-primary) !important; }
+body.theme-light .text-white { color: var(--tw-color-text-primary) !important; }
+
+body.theme-dark .hover\\:text-white:hover { color: white !important; }
+body.theme-light .hover\\:text-white:hover { color: #0f172a !important; }
+
+body.theme-dark .text-gray-300 { color: var(--tw-color-text-secondary) !important; }
+body.theme-light .text-gray-300 { color: var(--tw-color-text-secondary) !important; }
+
+body.theme-dark .text-gray-400 { color: var(--tw-color-text-secondary) !important; }
+body.theme-light .text-gray-400 { color: var(--tw-color-text-secondary) !important; }
+
+body.theme-dark .text-gray-500 { color: var(--tw-color-text-muted) !important; }
+body.theme-light .text-gray-500 { color: var(--tw-color-text-muted) !important; }
+
+/* Fix red text visibility in both themes */
+body.theme-dark .text-red-300 { color: #fca5a5 !important; }
+body.theme-light .text-red-300 { color: #b91c1c !important; }
+
+body.theme-dark .text-red-400 { color: #f87171 !important; }
+body.theme-light .text-red-400 { color: #dc2626 !important; }
+
+/* Fix yellow text visibility in both themes */
+body.theme-dark .text-yellow-400 { color: #facc15 !important; }
+body.theme-light .text-yellow-400 { color: #a16207 !important; }
+
+/* Fix gray text in inputs and labels */
+body.theme-dark .text-gray-600 { color: #7c8da0 !important; }
+body.theme-light .text-gray-600 { color: #475569 !important; }
+
+/* Border adjustments per theme */
+body.theme-dark .border-border,
+body.theme-dark [class*="border-border"] { border-color: var(--tw-color-border) !important; }
+
+body.theme-light .border-border,
+body.theme-light [class*="border-border"] { border-color: #cbd5e1 !important; }
+
+/* Primary button color */
+.bg-primary { background-color: var(--tw-color-primary) !important; }
+.hover\\:bg-primary\\/90:hover { background-color: var(--tw-color-primary-hover) !important; }
+
+/* Status colors */
+.text-success { color: var(--tw-color-success) !important; }
+.text-danger { color: var(--tw-color-danger) !important; }
+.bg-success\\/15 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.bg-success\\/10 { background-color: rgba(16, 185, 129, 0.1) !important; }
+
+/* Modal backdrop */
+.bg-black\\/60 { background-color: rgba(0, 0, 0, 0.6) !important; }
+body.theme-light .bg-black\\/60 { background-color: rgba(0, 0, 0, 0.4) !important; }
+
+/* ============================================
+    INNER HIGHLIGHT (theme-aware)
+    The subtle top-edge highlight on cards/modals
+    ============================================ */
+
+/* Dark mode inner highlight */
+.bg-white\/5,
+.bg-white\/10 {
+  background-color: var(--tw-color-inner-highlight) !important;
+}
+
+/* ============================================
+    SHADOW UTILITIES (theme-aware)
+    ============================================ */
+
+/* Dark mode shadows (default) */
+.shadow-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+              0 2px 4px -2px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-card-hover:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+              0 4px 6px -4px rgba(0, 0, 0, 0.2);
+}
+
+/* Light mode shadow overrides */
+.theme-light .shadow-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1),
+              0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   ANIMATIONS (both themes)
+   ============================================ */
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-animate {
+  animation: modal-enter 200ms ease-out forwards;
+}
+
+.modal-backdrop-animate {
+  animation: modal-backdrop-enter 150ms ease-out forwards;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR - DARK MODE DEFAULT
+   Light mode overrides come via body.theme-light selector
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Light mode scrollbar */
+body.theme-light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
