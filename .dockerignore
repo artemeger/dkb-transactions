@@ -1,0 +1,10 @@
+node_modules
+dist-electron
+.git
+.gitignore
+.vscode
+.idea
+screenshots
+example-data
+*.md
+LICENSE

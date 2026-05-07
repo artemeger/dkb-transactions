@@ -1,0 +1,32 @@
+{
+  "appId": "com.dkb-manager.app",
+  "productName": "DKB Transaction Manager",
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    "electron/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "client/dist",
+      "to": "client/dist"
+    },
+    {
+      "from": "server/dist",
+      "to": "server/dist"
+    },
+    {
+      "from": "server-bundled",
+      "to": "server"
+    }
+  ],
+  "win": {
+    "target": [
+      {"target": "portable", "arch": ["x64"]},
+      {"target": "nsis", "arch": ["x64"]}
+    ],
+    "sign": "./scripts/noop-sign.js"
+  }
+}

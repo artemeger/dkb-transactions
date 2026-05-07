@@ -29,7 +29,11 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist:linux": "npm run build && electron-builder --linux",
+    
+    "dist:win:docker": "bash scripts/build-docker.sh win",
+    "dist:linux:native": "bash scripts/build-docker.sh linux",
+    "dist:all:docker": "bash scripts/build-docker.sh all"
   },
   "devDependencies": {
     "@types/electron": "^1.6.10",

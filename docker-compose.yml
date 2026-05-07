@@ -1,0 +1,19 @@
+services:
+  electron-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app
+    volumes:
+      - .:/app
+      - build-cache:/home/node/.cache
+    environment:
+      - ELECTRON_CACHE=/home/node/.cache/electron
+      - ELECTRON_BUILDER_CACHE=/home/node/.cache/electron-builder
+      - HOME=/home/node
+      - DISPLAY=:99
+      - EW_SKIP_CODE_SIGNING=true
+
+volumes:
+  build-cache:
