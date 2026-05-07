@@ -4,24 +4,31 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
-// Detect if running in packaged (production) mode
-const isPackaged = app.isPackaged || !app.isDev;
+// Crash logging - write to user's Documents folder for debugging
+const logFile = path.join(os.homedir(), 'Documents', 'DKB-Transaction-Manager.log');
+function logError(msg, err) {
+  const line = `[${new Date().toISOString()}] ${msg}: ${err instanceof Error ? err.message + '\n' + err.stack : err}`;
+  console.error(line);
+  try { fs.appendFileSync(logFile, line + '\n'); } catch {}
+}
+process.on('uncaughtException', (err) => logError('Uncaught Exception', err));
+process.on('unhandledRejection', (err) => logError('Unhandled Rejection', err));
 
 // Check if no-sandbox mode is requested
 const noSandbox = process.argv.includes('--no-sandbox');
 
 // Check for development flag or environment variable
 function detectDevMode() {
-  // Check command line arguments
   if (process.argv.includes('--dev') || process.env.ELECTRON_DEV === '1') {
     return true;
   }
-  
-  // If not packaged and no dev flag, default to dev in development scenarios
-  return !isPackaged;
+  return !app.isPackaged;
 }
 
 app.isDev = detectDevMode();
+
+// Evaluate isPackaged after app.isDev is set
+const isPackaged = !app.isDev;
 
 // Apply no-sandbox if requested
 if (noSandbox) {
@@ -72,20 +79,21 @@ function startExpressServer() {
 
   let serverCommand;
   let serverArgs;
-  
+  let serverCwd;
+
   if (app.isDev) {
     // In development, run via tsx for TypeScript support
     serverCommand = 'npx';
     serverArgs = ['tsx', 'watch', path.join(__dirname, '..', 'server', 'src', 'index.ts')];
+    serverCwd = path.join(__dirname, '..');
   } else {
-    // In production, run bundled server
+    // In production, run bundled server using Electron's embedded Node
     let serverDistPath = null;
 
     if (isPackaged) {
-      // Try bundled version first, then fallback to unbundled dist
       const candidates = [
-        path.join(process.resourcesPath, 'server', 'index.js'),  // Bundled
-        path.join(process.resourcesPath, 'server', 'dist', 'index.js'),  // Unbundled
+        path.join(process.resourcesPath, 'server', 'index.js'),
+        path.join(process.resourcesPath, 'server', 'dist', 'index.js'),
         path.join(__dirname, '..', 'resources', 'server', 'index.js'),
         path.join(__dirname, '..', 'resources', 'server', 'dist', 'index.js'),
       ];
@@ -93,14 +101,17 @@ function startExpressServer() {
       for (const candidate of candidates) {
         if (fs.existsSync(candidate)) {
           serverDistPath = candidate;
+          console.log(`[Server] Found server at: ${serverDistPath}`);
           break;
         }
       }
+      serverCwd = process.resourcesPath;
     } else {
       serverDistPath = path.join(__dirname, '..', 'server-bundled', 'index.js');
       if (!fs.existsSync(serverDistPath)) {
         serverDistPath = path.join(__dirname, '..', 'server', 'dist', 'index.js');
       }
+      serverCwd = path.join(__dirname, '..');
     }
 
     if (!fs.existsSync(serverDistPath)) {
@@ -108,24 +119,52 @@ function startExpressServer() {
       return null;
     }
 
-    serverCommand = process.platform === 'win32' ? 'node.cmd' : 'node';
-    serverArgs = ['--experimental-vm-modules', serverDistPath];
+    // Use fork with Electron's own Node runtime
+    const { fork } = require('child_process');
+    expressServer = fork(serverDistPath, [], {
+      cwd: serverCwd,
+      env: { ...process.env, DKB_DATA_DIR: getDataDir() },
+      stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
+    });
+    console.log(`Starting Express server on port ${SERVER_PORT}...`);
+
+    // Log server output
+    if (expressServer.stdout) {
+      expressServer.stdout.on('data', (data) => {
+        console.log(`[Server]: ${data.toString().trim()}`);
+      });
+    }
+    if (expressServer.stderr) {
+      expressServer.stderr.on('data', (data) => {
+        console.error(`[Server Error]: ${data.toString().trim()}`);
+      });
+    }
+    expressServer.on('error', (err) => {
+      logError('Failed to start Express server', err);
+    });
+    expressServer.on('exit', (code, signal) => {
+      if (signal !== 'SIGTERM') {
+        console.log(`Express server exited with code ${code} and signal ${signal}`);
+        expressServer = null;
+      }
+    });
+    return;
   }
 
   console.log(`Starting Express server on port ${SERVER_PORT}...`);
-  
+
   const env = { ...process.env };
-  // Pass the data directory path to the server
   env.DKB_DATA_DIR = getDataDir();
   if (app.isDev) {
     env.DKV_DEV_MODE = '1';
   }
 
   expressServer = spawn(serverCommand, serverArgs, {
-    cwd: isPackaged ? path.join(process.resourcesPath, 'server') : path.join(__dirname, '..', 'server-bundled'),
+    cwd: serverCwd,
     env,
     stdio: ['inherit', 'pipe', 'pipe'],
     detached: false,
+    shell: process.platform === 'win32',
   });
 
   // Log server output for debugging
@@ -206,10 +245,19 @@ function startClientServer() {
   
   // Determine client directory location in production
   let clientDir;
-  if (isPackaged) {
+  if (isPackaged && process.resourcesPath) {
     clientDir = path.join(process.resourcesPath, 'client', 'dist');
+    if (!fs.existsSync(clientDir)) {
+      console.error(`[ClientServer] Primary path not found: ${clientDir}`);
+      clientDir = path.join(__dirname, '..', '..', 'client', 'dist');
+    }
   } else {
     clientDir = path.join(__dirname, '..', 'client', 'dist');
+  }
+  console.log(`[ClientServer] Serving from: ${clientDir}`);
+  console.log(`[ClientServer] Directory exists: ${fs.existsSync(clientDir)}`);
+  if (!fs.existsSync(clientDir)) {
+    console.error(`[ClientServer] FATAL: client directory does not exist!`);
   }
 
   // MIME types mapping
@@ -309,8 +357,10 @@ function startClientServer() {
       if (err) {
         if (err.code === 'ENOENT') {
           // Try to serve as SPA fallback - always load index.html for client-side routing
-          fs.readFile(path.join(clientDir, 'index.html'), (err2, htmlContent) => {
+          const indexPath = path.join(clientDir, 'index.html');
+          fs.readFile(indexPath, (err2, htmlContent) => {
             if (err2) {
+              console.error(`[ClientServer] Cannot serve ${indexPath}: ${err2.message}`);
               res.writeHead(404);
               res.end('Not Found');
             } else {
@@ -319,6 +369,7 @@ function startClientServer() {
             }
           });
         } else {
+          console.error(`[ClientServer] Error reading ${filePath}: ${err.message}`);
           res.writeHead(500);
           res.end('Internal Server Error');
         }
@@ -341,14 +392,11 @@ function startClientServer() {
 function shutdownExpressServer() {
   if (expressServer) {
     console.log('Shutting down Express server...');
-    expressServer.kill('SIGTERM');
-    
-    // Force kill after 5 seconds if still running
+    try { expressServer.kill('SIGTERM'); } catch {}
+    // Force kill after 2 seconds
     setTimeout(() => {
-      if (expressServer && !expressServer.killed) {
-        expressServer.kill('SIGKILL');
-      }
-    }, 5000);
+      try { expressServer.kill('SIGKILL'); } catch {}
+    }, 2000);
   }
   
   stopClientServer();
@@ -371,9 +419,7 @@ function createWindow() {
     minHeight: 600,
     title: 'DKB Transaction Manager',
     frame: false,
-    icon: isPackaged 
-      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'build', 'icon.png')
-      : path.join(__dirname, '..', 'public', 'favicon.ico'),
+    // No custom icon configured - use Electron default
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -388,11 +434,19 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // In production, serve client files via HTTP to handle absolute asset paths
-    httpServer = startClientServer();
-    
-    // Wait for server to be ready before loading the URL
+    try {
+      httpServer = startClientServer();
+    } catch (err) {
+      logError('[Main] Failed to start client server', err);
+    }
+
+    // Wait briefly for HTTP server to bind, then load
     setTimeout(() => {
-      mainWindow.loadURL(`http://localhost:${CLIENT_PORT}`);
+      try {
+        mainWindow.loadURL(`http://localhost:${CLIENT_PORT}`);
+      } catch (err) {
+        logError('[Main] Failed to load URL', err);
+      }
     }, 500);
   }
 
@@ -400,6 +454,11 @@ function createWindow() {
   if (app.isDev) {
     mainWindow.webContents.openDevTools();
   }
+
+  // Log navigation failures for debugging
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    logError(`[Main] Failed to load: ${errorCode}`, errorDescription);
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -507,15 +566,21 @@ function setupIPC() {
 app.whenReady().then(() => {
   // Ensure data directory exists
   ensureDataDir();
-  
+
   // Start the Express server
   startExpressServer();
-  
-  // Wait a moment for server to start
+
+  // Wait a moment for server to start, then create window
+  // (React app handles API failures gracefully if server is slow)
   setTimeout(() => {
-    createWindow();
-    setupIPC();
-  }, 1000);
+    try {
+      createWindow();
+      setupIPC();
+    } catch (err) {
+      console.error('[Main] Failed to create window:', err);
+      dialog.showErrorBox('Startup Error', `Failed to start app:\n${err.message}`);
+    }
+  }, 3000);
 });
 
 app.on('window-all-closed', () => {
@@ -526,16 +591,12 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', (event) => {
-  // Prevent default quit to allow graceful server shutdown
-  event.preventDefault();
-  
   console.log('App quitting, shutting down Express server...');
-  shutdownExpressServer();
-  
-  // Allow time for server shutdown before exiting
-  setTimeout(() => {
-    app.quit();
-  }, 1000);
+  if (expressServer) {
+    try { expressServer.kill(); } catch {}
+    expressServer = null;
+  }
+  stopClientServer();
 });
 
 app.on('activate', () => {
